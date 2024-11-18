@@ -139,47 +139,33 @@ def main():
     print("y_train shape = " + str(y_train.shape))
     print("y_test shape = " + str(y_test.shape))
 
-    # Build the LSTM model
     model = Sequential()
-
-    # Add LSTM layer with return_sequences=False to output the prediction directly
     model.add(LSTM(units=config.units, return_sequences=False, input_shape=(X_train.shape[1], X_train.shape[2])))
-
-    # Add a Dense layer to predict the output
-    model.add(Dense(units=config.time_ahead))
-
-    # Compile the model
+    model.add(Dense(units=1))
     model.compile(optimizer=Adam(learning_rate=config.learning_rate), loss='mean_squared_error')
-
-    # Model summary
     model.summary()
 
     history = model.fit(X_train, y_train, epochs=config.epochs, batch_size=config.batch_size, validation_data=(X_test, y_test))
 
     print(history)
 
-    # Define the output path
     output_dir = 'outputs/models/'
     output_path = os.path.join(output_dir, f'{config.experiment_name}.h5')
 
-    # Ensure the directory exists, create it if not
     os.makedirs(output_dir, exist_ok=True)
 
-    # Save the model
     model.save(output_path)
 
     print(f"Model saved to {output_path}")
 
-    # Evaluate the model on the test data
     loss = model.evaluate(X_test, y_test)
     print(f"Test Loss: {loss}")
 
-    # Make predictions
     predictions = model.predict(X_test)
     
     placeholder = 0
 
-    #Reshape data for inverse scaling for plotting
+    #Reshape data for inverse scaling for plotting - awkward fix for reshaping due to LSTM
     X_slice = X_test[:, -1, :]
     pred_slice = predictions[:,-1].reshape(-1, 1) 
 
@@ -187,7 +173,7 @@ def main():
     shifted_pred = np.full_like(pred_slice, placeholder)
     shifted_pred[:-config.time_ahead] = pred_slice[config.time_ahead:]
 
-    y_slice = y_test[:, -1].reshape(-1, 1) 
+    y_slice = y_test.reshape(-1, 1) 
     predictions_combined = np.concatenate([X_slice, shifted_pred], axis=1)
     Y_combined = np.concatenate([X_slice, y_slice], axis=1)
     
@@ -195,7 +181,7 @@ def main():
 
     y_test_original_scale = scaler.inverse_transform(Y_combined)[:, -1]
 
-    visualisation_tools.plotPredicted(y_test_original_scale, predictions_original_scale, 500)
+    visualisation_tools.plotPredicted(y_test_original_scale, predictions_original_scale, len(predictions_original_scale))
 
 
     #n = config.time_ahead - 1
@@ -205,7 +191,7 @@ def create_sequences(X, y, timesteps, n_future):
     X_seq, y_seq = [], []
     for i in range(len(X) - timesteps - n_future + 1):
         X_seq.append(X[i:i + timesteps])
-        y_seq.append(y[i + timesteps:i + timesteps + n_future])
+        y_seq.append(y[i + timesteps + n_future - 1])
     return np.array(X_seq), np.array(y_seq)
 
 def check_gpu():
