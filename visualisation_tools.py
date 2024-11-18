@@ -6,6 +6,9 @@ import folium
 import seaborn as sns
 import config
 import os
+import logging
+from datetime import datetime
+from sklearn.metrics import mean_absolute_error, r2_score
 
 def interactiveMap2():
     csv_path = 'datasets/metadata.csv'
@@ -172,7 +175,7 @@ def plotLocData(data, id):
     plt.close(fig)
     print(f"Plot saved as 'time_series_plot_{id}.png'")
 
-def plotPredicted(y_test_actual, predictions_actual, length):
+def plotPredicted(y_test_actual, predictions_actual, length, label, output_name):
 
     print("Saving predicted vs actual figure")
     # Create the plot
@@ -183,7 +186,7 @@ def plotPredicted(y_test_actual, predictions_actual, length):
     plt.plot(predictions_actual[:length], label='Predicted Height_target', color='red', linestyle='--', linewidth=2)
 
     # Add title and labels
-    plt.title('Comparison of Actual vs Predicted Height_target', fontsize=16)
+    plt.title(f'Comparison of Actual vs Predicted {label}', fontsize=16)
     plt.xlabel('Time', fontsize=12)
     plt.ylabel('Height_target', fontsize=12)
 
@@ -192,7 +195,7 @@ def plotPredicted(y_test_actual, predictions_actual, length):
 
     # Save the plot to a file
     output_dir = 'outputs/'
-    output_path = os.path.join(output_dir, f'{config.experiment_name}_comparison_plot.png')
+    output_path = os.path.join(output_dir, f'{config.experiment_name}_{output_name}_comparison_plot.png')
     plt.savefig(output_path)  # Change the file path if needed
 
 def plotHeights(data):
@@ -220,3 +223,65 @@ def plotHeights(data):
 
     # Save the plot as an image file
     plt.savefig('height_plot.png', dpi=300)
+
+def plot_loss(history, experiment_name):
+    """
+    Saves training and validation loss plots to disk.
+
+    Args:
+        history: The training history object from model.fit.
+        experiment_name: Name of the experiment for file identification.
+    """
+    plt.figure(figsize=(10, 6))
+    plt.plot(history.history['loss'], label='Training Loss')
+    plt.plot(history.history['val_loss'], label='Validation Loss')
+    plt.title('Loss Curves')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.grid()
+
+    # Save plot to disk
+    output_dir = 'outputs/plots'
+    os.makedirs(output_dir, exist_ok=True)
+    plot_path = os.path.join(output_dir, f"loss_{experiment_name}.png")
+    plt.savefig(plot_path)
+    logging.info(f"Loss plot saved to {plot_path}")
+
+def log_evaluation_metrics(y_true, y_pred):
+    """
+    Logs evaluation metrics like R-squared and MAE.
+    
+    Args:
+        y_true: True target values.
+        y_pred: Predicted values.
+    """
+    mae = mean_absolute_error(y_true, y_pred)
+    r2 = r2_score(y_true, y_pred)
+    logging.info(f"Mean Absolute Error (MAE): {mae}")
+    logging.info(f"R-squared (R²): {r2}")
+
+def plot_predictions(y_true, y_pred, experiment_name):
+    """
+    Saves the comparison plot between actual and predicted values.
+
+    Args:
+        y_true: True target values.
+        y_pred: Predicted values.
+        experiment_name: Name of the experiment for file identification.
+    """
+    plt.figure(figsize=(10, 6))
+    plt.plot(y_true, label='Actual', alpha=0.8)
+    plt.plot(y_pred, label='Predicted', alpha=0.8)
+    plt.title('Actual vs Predicted Values')
+    plt.xlabel('Time Steps')
+    plt.ylabel('Target Value')
+    plt.legend()
+    plt.grid()
+
+    # Save plot to disk
+    output_dir = 'outputs/plots'
+    os.makedirs(output_dir, exist_ok=True)
+    plot_path = os.path.join(output_dir, f"predictions_{experiment_name}.png")
+    plt.savefig(plot_path)
+    logging.info(f"Prediction plot saved to {plot_path}")
